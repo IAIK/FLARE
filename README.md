@@ -10,7 +10,7 @@ Currently, FLARE is implemented for both kernel text and module segment, althoug
 
 **For a short video of Data Bounce and EchoLoad and how FLARE mitigates them, watch the demo video 'flare.mp4'**
 
-[![Watch the demo](https://raw.github.com/flare-mitigation/FLARE/master/flare.png)](https://github.com/flare-mitigation/FLARE/raw/master/demo.mp4)
+[![Watch the demo](https://raw.github.com/flare-mitigation/FLARE/master/flare.png)](https://github.com/flare-mitigation/FLARE/raw/master/flare.mp4)
 
 # Prerequisites
 The capability to build kernel modules and loading them.
