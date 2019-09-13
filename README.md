@@ -16,14 +16,22 @@ Currently, FLARE is implemented for both kernel text and module segment, althoug
 The capability to build kernel modules and loading them.
 
 To build the module, the following packages are required:
-	sudo apt-get install gcc make linux-headers-$(uname -r)
+```
+sudo apt-get install gcc make linux-headers-$(uname -r)
+```
 
 # Usage
 Build the kernel module by running
-  make
+```
+make
+```
 
 After successfully building it, load it by running
-  sudo insmod flare.ko
+```
+sudo insmod flare.ko
+```
 
 Remove the module by running
-  sudo rmmod flare
+```
+sudo rmmod flare
+```
