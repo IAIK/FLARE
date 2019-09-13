@@ -12,7 +12,7 @@ Currently, FLARE is implemented for both kernel text and module segment, althoug
 
 [![Watch the demo](https://raw.github.com/flare-mitigation/FLARE/master/flare.png)](https://github.com/flare-mitigation/FLARE/raw/master/flare.mp4)
 
-# Prerequisites
+## Prerequisites
 The capability to build kernel modules and loading them.
 
 To build the module, the following packages are required:
@@ -20,7 +20,7 @@ To build the module, the following packages are required:
 sudo apt-get install gcc make linux-headers-$(uname -r)
 ```
 
-# Usage
+## Usage
 Build the kernel module by running
 ```
 make
@@ -35,3 +35,8 @@ Remove the module by running
 ```
 sudo rmmod flare
 ```
+
+## Warnings
+**Warning #1**: We are providing this code as-is. You are responsible for protecting yourself, your property and data, and others from any risks caused by this code. This code may cause unexpected and undesirable behavior to occur on your machine.
+
+**Warning #2**: This code is only for testing purposes. Do not run it on any productive systems. Do not run it on any system that might be used by another person or entity.
