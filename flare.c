@@ -13,7 +13,7 @@
 #error This module only supports 4 or 5 PT levels
 #endif
 
-#define PROMPT KERN_INFO "[Haystack]: "
+#define PROMPT KERN_INFO "[FLARE]: "
 
 #define KB(x) (x * 1024ul)
 #define MB(x) (x * KB(1024))
