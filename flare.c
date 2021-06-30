@@ -4,10 +4,28 @@
 #include <linux/kallsyms.h>
 #include <linux/mm.h>
 #include <linux/page-flags.h>
+#include <linux/version.h>
 #include <asm/pgtable.h>
 #include <asm/pgtable_types.h>
 #include <asm/page.h>
 #include <linux/kprobes.h>
+
+MODULE_LICENSE("GPL");
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
+#include <linux/mmap_lock.h>
+#endif
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0)
+#define KPROBE_KALLSYMS_LOOKUP 1
+typedef unsigned long (*kallsyms_lookup_name_t)(const char *name);
+kallsyms_lookup_name_t kallsyms_lookup_name_func;
+#define kallsyms_lookup_name kallsyms_lookup_name_func
+
+static struct kprobe kp = {
+    .symbol_name = "kallsyms_lookup_name"
+};
+#endif
 
 #if CONFIG_PGTABLE_LEVELS != 4 && CONFIG_PGTABLE_LEVELS != 5
 #error This module only supports 4 or 5 PT levels
@@ -58,6 +76,14 @@ static pud_t *modules_pud = 0;
 
 static const char *LOAD_MODULE_SYMBOL = "load_module";
 static const char *FREE_MODULE_SYMBOL = "free_module";
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
+#define LOCK_MM mmap_write_lock(im);
+#define UNLOCK_MM mmap_write_unlock(im);
+#else
+#define LOCK_MM down_write(&im->mmap_sem);
+#define UNLOCK_MM up_write(&im->mmap_sem);
+#endif
 
 static struct kretprobe load_module_krp = {
   .entry_handler = entry_ldfr_module,
@@ -229,16 +255,16 @@ static void cleanup_mitigation_range(pud_t **pud, size_t RANGE_START, char *mess
 }
 
 static int entry_ldfr_module(struct kretprobe_instance *ri, struct pt_regs *regs) {
-  down_read(&im->mmap_sem);
+  LOCK_MM
   cleanup_mitigation_range(&modules_pud, MODULE_RANGE_START, "Modules");
-  up_read(&im->mmap_sem);
+  UNLOCK_MM
   return 0;
 }
 
 static int ret_ldfr_module(struct kretprobe_instance *ri, struct pt_regs *regs) {
-  down_read(&im->mmap_sem);
+  LOCK_MM
   mitigate_range(&modules_pud, MODULE_RANGE_START, "Modules");
-  up_read(&im->mmap_sem);
+  UNLOCK_MM
   return 0;
 }
 
@@ -353,6 +379,22 @@ static void free_allocated_pages(void) {
 static int __init mitigation_init(void){
   printk(PROMPT "Loading module\n");
 
+#ifdef KPROBE_KALLSYMS_LOOKUP
+  /* register the kprobe */
+  register_kprobe(&kp);
+
+  /* assign kallsyms_lookup_name symbol to kp.addr */
+  kallsyms_lookup_name = (kallsyms_lookup_name_t) kp.addr;
+
+  /* done with the kprobe, so unregister it */
+  unregister_kprobe(&kp);
+
+  if(unlikely(!kallsyms_lookup_name)) {
+    printk(PROMPT "Could not retrieve kallsyms_lookup_name\n");
+    return -ENXIO;
+  }
+#endif
+
   im = (void *) kallsyms_lookup_name("init_mm");
   flush_tlb_all = (void *) kallsyms_lookup_name("flush_tlb_all");
 
@@ -363,7 +405,7 @@ static int __init mitigation_init(void){
   setup_pt_lines();
 
   // Lock im
-  down_read(&im->mmap_sem);
+  LOCK_MM
 
   // setup kret probes
   if (!setup_probes()) {
@@ -374,12 +416,12 @@ static int __init mitigation_init(void){
   mitigate_range(&modules_pud, MODULE_RANGE_START, "Modules");
 
   // Unlock mm
-  up_read(&im->mmap_sem);
+  UNLOCK_MM
 
 
   return 0;
 fail_unlock:
-  up_read(&im->mmap_sem);
+  UNLOCK_MM
 fail:
   free_allocated_pages();
   return -ENOMEM;
@@ -392,13 +434,13 @@ static void __exit mitigation_exit(void){
   unregister_kretprobe(&free_module_krp);
 
   // Lock mm
-  down_read(&im->mmap_sem);
+  LOCK_MM
 
   cleanup_mitigation_range(&kernel_pud, KERNEL_RANGE_START, "Kernel");
   cleanup_mitigation_range(&modules_pud, MODULE_RANGE_START, "Modules");
 
   // Unlock mm
-  up_read(&im->mmap_sem);
+  UNLOCK_MM
 
   free_allocated_pages();
 
